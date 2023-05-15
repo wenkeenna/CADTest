@@ -20,6 +20,9 @@
             <Button  Background="#6A9BCF"  Width="80"   Content="剪切" Margin="5"   Click="Button_Click"/>
 
         </DockPanel>
-            <skia:SKElement Grid.Row="1" x:Name="sk_Canvas" MouseLeftButtonDown="SKCanvas_MouseLeftButtonDown"  MouseMove="SKCanvas_MouseMove"  PaintSurface="sk_Canvas_PaintSurface" Width="auto" Height="auto"/>
+   
+            <skia:SKElement Grid.Row="1" x:Name="sk_Canvas" MouseLeftButtonDown="SKCanvas_MouseLeftButtonDown"  MouseMove="SKCanvas_MouseMove"  PaintSurface="sk_Canvas_PaintSurface"  Margin="0"  />
+     
+
     </Grid>
 </Window>

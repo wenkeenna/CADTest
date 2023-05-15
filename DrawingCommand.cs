@@ -15,6 +15,12 @@ namespace CAD_1
     {
         public SKPoint _startPoint;
         public SKPoint _endPoint;
+
+        public SKRect Bounds { get; set; }
+        public SKColor Color { get; set; }
+        public float StrokeWidth { get; set; }
+        public bool IsSelected { get; set; }
+
         public abstract void Start(SKPoint startPoint);
 
         public abstract void Move(SKPoint startPoint);

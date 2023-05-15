@@ -1,4 +1,6 @@
-﻿using SkiaSharp;
+﻿using HandyControl.Expression.Media;
+using SkiaSharp;
+using SkiaSharp.Views.Forms;
 using SkiaSharp.Views.WPF;
 using System;
 using System.Collections.Generic;
@@ -15,6 +17,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Xml.Linq;
+
 
 
 namespace CAD_1
@@ -52,7 +56,15 @@ namespace CAD_1
                     case DrawCommand.Line:
                         var point = e.GetPosition(sk_Canvas);
                         _currentDrawingCommand = new DrawLineCommand();
-                        _currentDrawingCommand.Start(point.ToSKPoint());
+                        if (FindNearestPoint(point) == point)
+                        {
+                            _currentDrawingCommand.Start(point.ToSKPoint());
+                        }
+                        else
+                        {
+                            _currentDrawingCommand.Start(FindNearestPoint(point).ToSKPoint());
+                        }
+                       
                         break;
                     case DrawCommand.Arc:
                         _currentDrawingCommand = new DrawArcCommand();
@@ -75,10 +87,26 @@ namespace CAD_1
                 if (_currentCommand != null)
                 {
                     var point = e.GetPosition(sk_Canvas);
-                    _currentDrawingCommand.End(point.ToSKPoint());
+                    if (_currentCommand == DrawCommand.Circle || _currentCommand == DrawCommand.Rectangle)
+                    {
+                        if (_currentDrawingCommand._startPoint.X > point.X || _currentDrawingCommand._startPoint.Y > point.Y)
+                        {
+                            return;
+                        }
+                    }
+
+                    if (FindNearestPoint(point) == point)
+                    {
+                        _currentDrawingCommand.End(point.ToSKPoint());
+                    }
+                    else
+                    {
+                        _currentDrawingCommand.End(FindNearestPoint(point).ToSKPoint());
+                    }
+                //    _currentDrawingCommand.End(point.ToSKPoint());
                     _commands.Add(_currentDrawingCommand);
                     sk_Canvas.InvalidateVisual();
-                 
+
                 }
             }
         }
@@ -91,17 +119,16 @@ namespace CAD_1
         {
             if (/*e.LeftButton == MouseButtonState.Pressed &&*/  _mouseDownCount && _currentCommand != null)
             {
-
                 var point = e.GetPosition(sk_Canvas);
                 if (_currentCommand == DrawCommand.Circle || _currentCommand == DrawCommand.Rectangle)
                 {
-                    if (_currentDrawingCommand._startPoint.X > point.X  || _currentDrawingCommand._startPoint.Y> point.Y)
+                    if (_currentDrawingCommand._startPoint.X > point.X || _currentDrawingCommand._startPoint.Y > point.Y)
                     {
                         return;
                     }
                 }
                 _currentDrawingCommand.Move(point.ToSKPoint());
-
+               
                 sk_Canvas.InvalidateVisual();
             }
         }
@@ -128,8 +155,11 @@ namespace CAD_1
                 _currentDrawingCommand.Draw(e, sk_Canvas, _commands);
             }
 
-            test(sender,e);
+            test(sender, e);
         }
+
+      
+
 
         /// <summary>
         /// 绘制命令选择
@@ -174,34 +204,80 @@ namespace CAD_1
                 StrokeJoin = SKStrokeJoin.Round,
                 IsAntialias = true
             };
-
             // 获取视图的宽度和高度
             float width = (float)sk_Canvas.ActualWidth;
             float height = (float)sk_Canvas.ActualHeight;
 
-       
- 
-         
+            // 获取设备的像素密度
+            var dpi = VisualTreeHelper.GetDpi(sk_Canvas);
+            // 根据设备像素比例调整元素大小
+            var scaledWidth = width * dpi.DpiScaleX;
+            var scaledHeight = height * dpi.DpiScaleY;
 
-       
+
             // 绘制网格
             float gridSize = 20;
-            float xStart = 0;
-            float yStart = 0;
+            float xStart =10;
+            float yStart = 10 ;
 
+            int xLineCoun = (int)(scaledWidth / gridSize);
+            int yLineCoun = (int)(scaledHeight / gridSize);
 
-            while (xStart < width)
+            for (int i = 0; i < xLineCoun; i++)
             {
-                canvas.DrawLine(xStart, 0, xStart, width, paint);
+                canvas.DrawLine(xStart, 10, xStart, (float)yLineCoun* gridSize-10, paint);
                 xStart += gridSize;
             }
-            while (yStart < height)
+            for (int i = 0; i < yLineCoun; i++)
             {
-                canvas.DrawLine(0, yStart, height, yStart, paint);
+                canvas.DrawLine(10, yStart, (float)xLineCoun * gridSize-10, yStart, paint);
                 yStart += gridSize;
             }
         }
 
+
+        private int snapRange = 10; // 捕捉范围
+        private System.Windows.Point FindNearestPoint(System.Windows.Point currentPoint)
+        {
+            // 如果点列表为空，返回空点
+            if (_commands.Count == 0)
+            {
+                return currentPoint;
+            }
+            //System.Windows.Point nearestPoint = _commands[0]._startPoint.ToPoint(); // 先将第一个点作为最近点
+            System.Windows.Point nearestPoint = currentPoint; // 先将第一个点作为最近点
+           // double shortestDistance = Distance(currentPoint, nearestPoint); // 计算当前点到最近点的距离
+
+            // 从第二个点开始遍历，找到距离当前点最近的点
+            for (int i = 0; i < _commands.Count; i++)
+            {
+                double distance_s = Distance(currentPoint, _commands[i]._startPoint.ToPoint()); // 计算当前点到第i个点的距离
+                double distance_e = Distance(currentPoint, _commands[i]._endPoint.ToPoint()); // 计算当前点到第i个点的距离
+                if(distance_s < distance_e)
+                {
+                    if (distance_s < snapRange)
+                    {
+                        nearestPoint = _commands[i]._startPoint.ToPoint(); // 更新最近点
+                       // shortestDistance = distance_s; // 更新最短距离
+                    }
+                }
+                else
+                {
+                    if (distance_e< snapRange)
+                    {
+                        nearestPoint = _commands[i]._endPoint.ToPoint(); // 更新最近点
+                      //  shortestDistance = distance_e; // 更新最短距离
+                    }
+                }
+            }
+            return nearestPoint;
+        }
+        private double Distance(System.Windows.Point p1, System.Windows.Point p2)
+        {
+            double dx = p1.X - p2.X;
+            double dy = p1.Y - p2.Y;
+            return Math.Sqrt(dx * dx + dy * dy);
+        }
     }
 
     enum DrawCommand
