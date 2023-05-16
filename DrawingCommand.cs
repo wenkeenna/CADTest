@@ -15,6 +15,7 @@ namespace CAD_1
     {
         public SKPoint _startPoint;
         public SKPoint _endPoint;
+        public DrawCommand drawCommand { get; set; }
 
         public SKRect Bounds { get; set; }
         public SKColor Color { get; set; }
@@ -31,4 +32,5 @@ namespace CAD_1
 
 
     }
+  
 }

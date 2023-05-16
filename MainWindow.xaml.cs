@@ -56,6 +56,7 @@ namespace CAD_1
                     case DrawCommand.Line:
                         var point = e.GetPosition(sk_Canvas);
                         _currentDrawingCommand = new DrawLineCommand();
+                        _currentDrawingCommand.drawCommand=DrawCommand.Line;
                         if (FindNearestPoint(point) == point)
                         {
                             _currentDrawingCommand.Start(point.ToSKPoint());
@@ -68,15 +69,27 @@ namespace CAD_1
                         break;
                     case DrawCommand.Arc:
                         _currentDrawingCommand = new DrawArcCommand();
+                        _currentDrawingCommand.drawCommand = DrawCommand.Arc;
                         break;
                     case DrawCommand.Circle:
                         var point_Circle = e.GetPosition(sk_Canvas);
                         _currentDrawingCommand = new DrawCircleCommand();
-                        _currentDrawingCommand.Start(point_Circle.ToSKPoint());
+                        _currentDrawingCommand.drawCommand = DrawCommand.Circle;
+                        if (FindNearestPoint(point_Circle) == point_Circle)
+                        {
+                            _currentDrawingCommand.Start(point_Circle.ToSKPoint());
+                        }
+                        else
+                        {
+                            _currentDrawingCommand.Start(FindNearestPoint(point_Circle).ToSKPoint());
+                        }
+                        //   _currentDrawingCommand.Start(point_Circle.ToSKPoint());
                         break;
                     case DrawCommand.Rectangle:
                         var point_Rect = e.GetPosition(sk_Canvas);
                         _currentDrawingCommand = new DrawRectangleCommand();
+                        _currentDrawingCommand.drawCommand = DrawCommand.Rectangle;
+
                         _currentDrawingCommand.Start(point_Rect.ToSKPoint());
                         break;
                 }
@@ -246,28 +259,71 @@ namespace CAD_1
             }
             //System.Windows.Point nearestPoint = _commands[0]._startPoint.ToPoint(); // 先将第一个点作为最近点
             System.Windows.Point nearestPoint = currentPoint; // 先将第一个点作为最近点
-           // double shortestDistance = Distance(currentPoint, nearestPoint); // 计算当前点到最近点的距离
+                                                              // double shortestDistance = Distance(currentPoint, nearestPoint); // 计算当前点到最近点的距离
 
             // 从第二个点开始遍历，找到距离当前点最近的点
+         
             for (int i = 0; i < _commands.Count; i++)
             {
-                double distance_s = Distance(currentPoint, _commands[i]._startPoint.ToPoint()); // 计算当前点到第i个点的距离
-                double distance_e = Distance(currentPoint, _commands[i]._endPoint.ToPoint()); // 计算当前点到第i个点的距离
-                if(distance_s < distance_e)
+                if (_commands[i].drawCommand == DrawCommand.Line)
                 {
-                    if (distance_s < snapRange)
+                    double distance_s = Distance(currentPoint, _commands[i]._startPoint.ToPoint()); // 计算当前点到第i个点的距离
+                    double distance_e = Distance(currentPoint, _commands[i]._endPoint.ToPoint()); // 计算当前点到第i个点的距离
+                    if (distance_s < distance_e)
                     {
-                        nearestPoint = _commands[i]._startPoint.ToPoint(); // 更新最近点
-                       // shortestDistance = distance_s; // 更新最短距离
+                        if (distance_s < snapRange)
+                        {
+                            nearestPoint = _commands[i]._startPoint.ToPoint(); // 更新最近点
+                                                                               // shortestDistance = distance_s; // 更新最短距离
+                        }
+                    }
+                    else
+                    {
+                        if (distance_e < snapRange)
+                        {
+                            nearestPoint = _commands[i]._endPoint.ToPoint(); // 更新最近点
+                                                                             //  shortestDistance = distance_e; // 更新最短距离
+                        }
                     }
                 }
-                else
+                if (_commands[i].drawCommand == DrawCommand.Circle)
                 {
-                    if (distance_e< snapRange)
+                    double radius = Math.Sqrt(Math.Pow(_commands[i]._startPoint.X - _commands[i]._endPoint.X, 2) + Math.Pow(_commands[i]._startPoint.Y - _commands[i]._endPoint.Y, 2));
+                    //// 计算鼠标点击点和圆心的距离
+                    //double distance_s = Math.Sqrt(Math.Pow(currentPoint.X - _commands[i]._startPoint.X, 2) + Math.Pow(currentPoint.Y - _commands[i]._startPoint.Y, 2));
+                    //double distance_e = Math.Sqrt(Math.Pow(currentPoint.X - _commands[i]._endPoint.X, 2) + Math.Pow(currentPoint.Y - _commands[i]._endPoint.Y, 2));
+
+                    // 如果距离小于半径，说明鼠标点击点在圆内，最近点为圆心
+                    //if (distance_s < distance_e)
+                    //{
+                    //    if (distance_s < snapRange)
+                    //    {
+                    //        nearestPoint = _commands[i]._startPoint.ToPoint();
+                    //    }
+                    //}
+                    //else
+                    //{
+                        // 计算鼠标点击点和圆上的点的连线方向向量
+                        double dx = currentPoint.X - _commands[i]._startPoint.X;
+                        double dy = currentPoint.Y - _commands[i]._startPoint.Y;
+                        double length = Math.Sqrt(dx * dx + dy * dy);
+                        double directionX = dx / length;
+                        double directionY = dy / length;
+
+                        // 计算圆上的点
+                        System.Windows.Point circlePoint = new System.Windows.Point((int)(_commands[i]._startPoint.X + directionX * radius), (int)(_commands[i]._startPoint.Y + directionY * radius));
+                    // 最近点即为圆上的点
+                    double distance_s = Distance(currentPoint, circlePoint); // 计算当前点到第i个点的距离
+                    if (distance_s < snapRange)
                     {
-                        nearestPoint = _commands[i]._endPoint.ToPoint(); // 更新最近点
-                      //  shortestDistance = distance_e; // 更新最短距离
+                        nearestPoint = circlePoint;
                     }
+                       
+                    //}
+                }
+                if (_commands[i].drawCommand == DrawCommand.Rectangle)
+                {
+
                 }
             }
             return nearestPoint;
@@ -280,7 +336,7 @@ namespace CAD_1
         }
     }
 
-    enum DrawCommand
+   public enum DrawCommand
     {
         /// <summary>
         /// 无
