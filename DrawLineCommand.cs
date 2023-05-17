@@ -46,8 +46,10 @@ namespace CAD_1
             // 获取视图控件的尺寸
             var viewWidth = (float)element.ActualWidth;
             var viewHeight = (float)element.ActualHeight;
+
             // 计算视图控件和画布之间的比例
             var scale = Math.Min(viewWidth / e.Info.Width, viewHeight / e.Info.Height);
+
             // 在视图控件坐标系中转换起始点和终止点
             var transformedStartPoint = new SKPoint(_startPoint.X / scale, _startPoint.Y / scale);
             var transformedEndPoint = new SKPoint(_endPoint.X / scale, _endPoint.Y / scale);
